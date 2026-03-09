@@ -11,19 +11,15 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <style>
-      /* Keep Google Fonts as a fallback just in case */
       @import url('https://fonts.googleapis.com/css2?family=Hanuman:wght@400;700&family=Moul&display=swap');
       
-      /* 1. Define Kontumruy Regular */
       @font-face {
         font-family: 'Khmer Kontumruy';
-        /* NOTE: Change .ttf to .otf or .woff if your files have a different extension */
         src: url('KantumruyPro-Regular.ttf') format('truetype'); 
         font-weight: normal;
         font-style: normal;
       }
 
-      /* 3. Apply to your custom classes */
       .font-khmer-title { 
         font-family: 'Moul', serif; 
         line-height: 1.8; 
@@ -44,7 +40,6 @@
 
       body { background-color: #0d381b; }
 
-      /* Main Invitation Video Background */
       .fixed-video-frame {
         position: fixed;
         top: 0;
@@ -61,7 +56,6 @@
         object-fit: fill;
       }
 
-      /* Glassmorphism utility for extra clarity */
       .glass-card {
         background: rgba(255, 255, 255, 0.15);
         backdrop-filter: blur(12px);
@@ -152,8 +146,9 @@
       // --- Main Application ---
       function App() {
         const [guestName, setGuestName] = useState('ភ្ញៀវកិត្តិយស');
-        const [doorState, setDoorState] = useState('closed');
-        // New state to control the entrance content delay
+        
+        // 4 States: 'entrance' (start) -> 'gate_reveal' (entrance fades out) -> 'gate_opening' (doors slide) -> 'opened' (done)
+        const [doorState, setDoorState] = useState('entrance'); 
         const [showEntranceContent, setShowEntranceContent] = useState(false);
         const galleryPhotos = ["photo1.jpg", "photo2.jpg", "photo3.jpg", "photo4.jpg", "photo5.jpg", "photo6.jpg"];
 
@@ -163,34 +158,65 @@
           if (name) setGuestName(name);
         }, []);
 
-        // New useEffect to trigger the content float-in after 8 seconds (8000ms)
         useEffect(() => {
           const timer = setTimeout(() => {
             setShowEntranceContent(true);
           }, 3000);
-          return () => clearTimeout(timer); // Cleanup timer if component unmounts
+          return () => clearTimeout(timer); 
         }, []);
 
         const openInvitation = () => {
-          if (doorState !== 'closed') return;
-          setDoorState('opening');
+          if (doorState !== 'entrance') return;
+          
           window.scrollTo(0, 0); 
-          setTimeout(() => { setDoorState('opened'); }, 1200); 
+
+          // Step 1: Entrance content fades out to reveal the closed doors
+          setDoorState('gate_reveal');
+          
+          // Step 2: Slightly before entrance is fully gone, start sliding the doors open
+          setTimeout(() => { 
+            setDoorState('gate_opening'); 
+          }, 800); 
+
+          // Step 3: Wait for door slide animation to finish, then set to fully opened
+          setTimeout(() => { 
+            setDoorState('opened'); 
+          }, 2400); 
         };
 
         return (
           <div className="min-h-screen font-khmer-body relative">
             
-            {/* MAIN INVITATION VIDEO BACKGROUND */}
+            {/* LAYER 1: MAIN INVITATION VIDEO BACKGROUND */}
             <div className="fixed-video-frame">
                <video autoPlay loop muted playsInline src="butterflies_medium.mp4"></video>
             </div>
             
-            {/* --- CREATIVE ENTRANCE PAGE WITH ITS OWN VIDEO BACKGROUND --- */}
+            {/* LAYER 2: DOORS OVERLAY */}
+            {doorState !== 'opened' && (
+              <div className="fixed inset-0 z-[90] flex overflow-hidden pointer-events-none bg-transparent">
+                {/* Left Door */}
+                <div 
+                  className={`w-1/2 h-full bg-cover bg-[position:right_center] transition-transform duration-[1500ms] ease-in-out ${
+                    doorState === 'gate_opening' ? '-translate-x-full' : 'translate-x-0'
+                  }`}
+                  style={{ backgroundImage: "url('door_left.jpg')" }}
+                ></div>
+                {/* Right Door */}
+                <div 
+                  className={`w-1/2 h-full bg-cover bg-[position:left_center] transition-transform duration-[1500ms] ease-in-out ${
+                    doorState === 'gate_opening' ? 'translate-x-full' : 'translate-x-0'
+                  }`}
+                  style={{ backgroundImage: "url('door_right.jpg')" }}
+                ></div>
+              </div>
+            )}
+
+            {/* LAYER 3: CREATIVE ENTRANCE PAGE */}
             {doorState !== 'opened' && (
               <div 
-                className={`fixed inset-0 z-[100] transition-all duration-[1200ms] ease-in-out ${
-                  doorState === 'opening' ? 'opacity-0 scale-110 pointer-events-none' : 'opacity-100 scale-100 pointer-events-auto'
+                className={`fixed inset-0 z-[100] transition-opacity duration-[1000ms] ease-in-out ${
+                  doorState !== 'entrance' ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'
                 }`}
               >
                 {/* Separate Entrance Video Background */}
@@ -202,58 +228,43 @@
                     className="w-full h-full object-cover"
                     src="background_entrance.mp4" 
                     onTimeUpdate={(e) => {
-                      // 1. Trigger the text to float in at exactly 8 seconds
                       if (e.target.currentTime >= 8 && !showEntranceContent) {
                         setShowEntranceContent(true);
                       }
-                      
-                      // 2. Pause the video slightly after 8 seconds (e.g., 8.1 or 8.2) 
-                      // but BEFORE it reaches the black frames at the end of the file.
-                      // Adjust '8.1' down to '7.9' or up to '8.5' depending on your exact video length.
                       if (e.target.currentTime >= 3) {
                         e.target.pause();
                       }
                     }}
                   ></video>
-                  
-                  {/* Applied backdrop-blur to the overlay for smooth hardware acceleration */}
                   <div className={`absolute inset-0 bg-white/60 transition-all duration-[1500ms] ease-in-out ${
                     showEntranceContent ? 'opacity-100 backdrop-blur-md pointer-events-auto' : 'opacity-0 backdrop-blur-none pointer-events-none'
                   }`}></div>
                 </div>
                 
                 {/* Main Entrance Content */}
-                {/* Added transform, opacity, and translate utilities bound to showEntranceContent */}
                 <div 
                   className={`absolute inset-0 flex flex-col items-center justify-center z-50 pt-10 pb-10 px-4 text-center transition-all duration-[1500ms] ease-out transform ${
                     showEntranceContent ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-10 pointer-events-none'
                   }`}
                 >
-                  
-                  {/* 1. Title */}
                   <div className="mb-6 flex flex-col items-center">
                     <h2 className="text-3xl md:text-5xl mb-2 text-[#8B6533] font-khmer-title drop-shadow-sm">សិរីមង្គលអាពាហ៍ពិពាហ៍</h2>
                     <h2 className="text-[10px] md:text-sm tracking-[0.2em] uppercase font-serif text-[#8B6533] font-bold">Wedding Invitation</h2>
                   </div>
 
-                  {/* 2. Logo */}
                   <div className="mb-6 flex flex-col items-center">
                     <img src="logo202.png" alt="Wedding Crest" className="w-44 md:w-64 drop-shadow-md" onError={(e) => e.target.style.display='none'} />
                   </div>
 
-                  {/* 3. សូមគោរពអញ្ជើញ */}
                   <p className="text-m md:text-m text-[#8B6533] font-khmer-body mb-6 drop-shadow-sm">សូមគោរពអញ្ជើញ</p>
 
-                  {/* 4. Guest name box - Fading Golden Underline */}
                   <div className="mb-10 w-full flex flex-col items-center justify-center">
                     <p className="text-xl md:text-xl font-khmer-title text-[#8B6533] break-words drop-shadow-sm leading-tight text-center px-4 mb-4">
                       {guestName}
                     </p>
-                    {/* The Golden Line */}
                     <div className="h-[2px] w-3/4 max-w-[250px] bg-gradient-to-r from-transparent via-[#8B6533] to-transparent opacity-70"></div>
                   </div>
 
-                  {/* 5. Button to open */}
                   <button 
                     onClick={openInvitation} 
                     className="group relative px-8 py-3.5 bg-[#8B6533] text-white font-khmer-body tracking-wider rounded-full text-base md:text-lg 
@@ -262,12 +273,19 @@
                   >
                     <span>បើកសំបុត្រអញ្ជើញ</span>
                   </button>
-
                 </div>
               </div>
             )}
 
-            <div className={`relative z-10 min-h-screen pt-24 pb-32 px-12 sm:px-20 lg:px-32 ${doorState === 'closed' ? 'hidden' : 'block'}`}>
+            {/* LAYER 0: MAIN INVITATION CONTENT */}
+            {/* Always rendered, but scroll is locked until doors are fully opened so user can't scroll away mid-animation */}
+            <div 
+              className={`relative z-10 pt-24 pb-32 px-12 sm:px-20 lg:px-32`}
+              style={{
+                height: doorState !== 'opened' ? '100vh' : 'auto',
+                overflow: doorState !== 'opened' ? 'hidden' : 'visible'
+              }}
+            >
               <div className="max-w-4xl mx-auto fade-in flex flex-col gap-12 items-center">
                 
                 <div className="text-center pt-8 w-full">
@@ -340,11 +358,9 @@
                     {/* Day 1 - Transparent with Blur */}
                     <div className="glass-card p-5 md:p-10 rounded-3xl shadow-lg border border-[#DEBC77]/30 w-full">
                       <h3 className="font-semibold mb-6 md:mb-8 text-center md:text-left border-b border-[#DEBC77]/20 pb-4 leading-loose">
-                        {/* Line 1: Program Day */}
                         <span className="block text-[#DEBC77] text-l md:text-2xl">
                           កម្មវិធីថ្ងៃទី១
                         </span>
-                        {/* Line 2: Date */}
                         <span className="block text-[#DEBC77] text-m md:text-xl mt-1">
                           ថ្ងៃសៅរ៍ ទី១៨ ខែមេសា ឆ្នាំ២០២៦
                         </span>
@@ -360,11 +376,9 @@
                     {/* Day 2 - Transparent with Blur */}
                     <div className="glass-card p-5 md:p-10 rounded-3xl shadow-lg border border-[#DEBC77]/30 w-full">
                       <h3 className="font-semibold mb-6 md:mb-8 text-center md:text-left border-b border-[#DEBC77]/20 pb-4 leading-loose">
-                        {/* Line 1: Program Day */}
                         <span className="block text-[#DEBC77] text-l md:text-2xl">
                           កម្មវិធីថ្ងៃទី២
                         </span>
-                        {/* Line 2: Date */}
                         <span className="block text-[#DEBC77] text-m md:text-xl mt-1">
                           ថ្ងៃអាទិត្យ ទី១៩ ខែមេសា ឆ្នាំ២០២៦
                         </span>
